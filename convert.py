@@ -7,9 +7,10 @@
 import logging
 import regex
 import sys
+import itertools
 
 import opencc
-from pypinyin import lazy_pinyin
+from pypinyin import pinyin, Style
 
 # Require at least 2 characters
 _MINIMUM_LEN = 2
@@ -73,13 +74,14 @@ def main():
             title = _TO_SIMPLIFIED_CHINESE.convert(line.strip())
             if is_good_title(title, previous_title):
                 stripped_title = title.translate(_INTERPUNCT_TRANSTAB)
-                pinyin = [_PINYIN_FIXES.get(item, item) for item in lazy_pinyin(stripped_title)]
-                pinyin = _PINYIN_SEPARATOR.join(pinyin)
-                if _HANZI_RE.search(pinyin):
-                    logging.info(
-                        f'Failed to convert to Pinyin. Ignoring: {pinyin}')
-                    continue
-                print(make_output(title, pinyin))
+                for _pinyin in itertools.product(*pinyin(stripped_title, heteronym=True, style=Style.NORMAL)):
+                    _pinyin = map(lambda x: _PINYIN_FIXES.get(x, x), _pinyin)
+                    _pinyin = _PINYIN_SEPARATOR.join(_pinyin)
+                    if _HANZI_RE.search(_pinyin):
+                        logging.info(
+                            f'Failed to convert to Pinyin. Ignoring: {_pinyin}')
+                        continue
+                    print(make_output(title, _pinyin))
                 result_count += 1
                 if result_count % _LOG_EVERY == 0:
                     log_count(result_count)
