@@ -8,8 +8,16 @@ import logging
 import regex
 import sys
 
+from typing import List
+from typing import Dict
+from typing import Optional
+from typing import Text
+
 import opencc
-from pypinyin import lazy_pinyin
+from pypinyin import lazy_pinyin, load_single_dict, load_phrases_dict
+from pypinyin.constants import PINYIN_DICT, PHRASES_DICT
+from pypinyin_dict.pinyin_data import cc_cedict, zdic
+from pypinyin_dict.phrase_pinyin_data import large_pinyin
 
 # Require at least 2 characters
 _MINIMUM_LEN = 2
@@ -36,6 +44,13 @@ _PINYIN_FIXES = {
 
 logging.basicConfig(level=logging.INFO)
 
+def load_single_dict_as_fallback(pinyin_dict: Dict[int, Text], style: Optional[str] = 'default') -> None:
+    fallback = {k: v for k, v in pinyin_dict.items() if k not in PINYIN_DICT}
+    load_single_dict(fallback, style)
+
+def load_phrases_dict_as_fallback(phrases_dict: Dict[Text, List[List[Text]]], style: Optional[str] = 'default') -> None:
+    fallback = {k: v for k, v in phrases_dict.items() if k not in PHRASES_DICT}
+    load_phrases_dict(fallback, style)
 
 def is_good_title(title, previous_title=None):
     if not _HANZI_RE.fullmatch(title):
@@ -68,6 +83,9 @@ def make_output(word, pinyin):
 def main():
     previous_title = None
     result_count = 0
+    load_single_dict_as_fallback(cc_cedict.pinyin_dict)
+    load_single_dict_as_fallback(zdic.pinyin_dict)
+    load_phrases_dict_as_fallback(large_pinyin.phrases_dict)
     with open(sys.argv[1]) as f:
         for line in f:
             title = _TO_SIMPLIFIED_CHINESE.convert(line.strip())
